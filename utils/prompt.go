@@ -8,18 +8,19 @@ import (
 	p "github.com/manifoldco/promptui"
 )
 
+var URLProtocols = []string{"http://", "https://"}
+var URLTopDomain = []string{".com", ".org", ".net", ".io", ".dev", ".ai", ".app", ".co", ".info", ".tech", ".gov"}
+
 func validateURL() func(string) error {
 	return func(input string) error {
 		//! check for protocol
-		checkOne := []string{"http://", "https://"}
-		if !ContainsAllValues(input, checkOne) {
-			return errors.New("Needs to STARTS with one of the following: " + strings.Join(checkOne, ", "))
+		if !ContainsAllValues(input, URLProtocols) {
+			return errors.New("Needs to STARTS with one of the following: " + strings.Join(URLProtocols, ", "))
 		}
 
 		//! check for top-level domain
-		checkTwo := []string{".com", ".org", ".net", ".io", ".dev", ".ai", ".app", ".co", ".info", ".tech", ".gov"}
-		if !CheckTopLevelDomain(input, checkTwo) {
-			return errors.New("Needs to ENDS with one of the following: " + strings.Join(checkTwo, ", "))
+		if !CheckTopLevelDomain(input, URLTopDomain) {
+			return errors.New("Needs to ENDS with one of the following: " + strings.Join(URLTopDomain, ", "))
 		}
 
 		//! check if there's a path/subdirectory
@@ -32,7 +33,7 @@ func validateURL() func(string) error {
 
 }
 
-func PromptInput() {
+func PromptInput() (string, error) {
 	prompt := &p.Prompt{
 		Label:       "Enter the url you want to get all its URL's paths",
 		Default:     "https://google.com",
@@ -43,8 +44,9 @@ func PromptInput() {
 	res, err := prompt.Run()
 
 	if err != nil {
-		fmt.Printf("Prompt failed %v\n", err)
-		return
+		return "", err
 	}
 	PrintColor(YELLOW, fmt.Sprintf("You choose %q\n", res))
+
+	return res, nil
 }
