@@ -1,7 +1,10 @@
 package main
 
 import (
+	"runtime"
+	"slices"
 	"strconv"
+	"sync"
 	s "url-extractor/scraper"
 	u "url-extractor/utils"
 )
@@ -11,6 +14,7 @@ const (
 )
 
 func main() {
+
 	domain, err := u.PromptInput()
 
 	if err != nil {
@@ -18,30 +22,75 @@ func main() {
 	}
 
 	//! constants
-	MAX_THREADS := 1
-	//sURLPaths := make(map[string]bool)
-	//QueuePaths := make([]string)
+	MAX_THREADS := runtime.NumCPU()
 
-	//! channels
-	urlChan := make(chan string, MAX_THREADS)
+	//! helpers
+	var queuePaths []string
+	urlPaths := make(map[string]bool)
 
-	u.PrintColor(u.PURPLE, "RUNNING "+strconv.Itoa(MAX_THREADS)+" THREADS\n")
+	//! do the first cycle
+	urlChan := make(chan string)
+	u.PrintColor(u.PURPLE, "using one thread for the first loop...\n")
+	go func() {
+		s.FetchUrl(domain, urlChan)
+		defer close(urlChan)
+	}()
 
-	for range MAX_THREADS {
-		go func() {
-			s.FetchUrl(domain, urlChan)
-		}()
+	for url := range urlChan {
+
+		if url == "" {
+			continue
+		}
+
+		fixedUrl := u.RepairPath(domain, url)
+		if _, ok := urlPaths[fixedUrl]; !ok {
+			u.PrintColor(u.WHITE, fixedUrl+"\n")
+			urlPaths[fixedUrl] = true
+			queuePaths = append(queuePaths, fixedUrl)
+		}
 	}
 
-	for range urlChan {
-		url := <-urlChan
-		u.PrintColor(u.RED, url+"\n")
-		u.PrintColor(u.BLUE, u.RepairPath(domain, url)+"\n")
-		// fixedUrl := u.RepairPath(domain, url)
-		// if _, ok := URLPaths[fixedUrl]; !ok {
-		// 	u.PrintColor(u.WHITE, fixedUrl+"\n")
-		// 	URLPaths[fixedUrl] = true
-		// }
+	//! loop
+	u.PrintColor(u.PURPLE, "RUNNING "+strconv.Itoa(MAX_THREADS)+" THREADS\n")
+	var keepContinuing bool = true
+
+	for keepContinuing {
+		results := make(chan string, MAX_THREADS)
+		var wg sync.WaitGroup
+		for idx := range MAX_THREADS {
+			if idx > len(queuePaths) {
+				return
+			}
+			wg.Add(1)
+			go func() {
+				queuePaths = slices.Delete(queuePaths, idx, idx+1)
+				s.FetchUrl(queuePaths[idx], results)
+				defer wg.Done()
+			}()
+		}
+
+		go func() {
+			wg.Wait()
+			defer close(results)
+		}()
+
+		for url := range urlChan {
+
+			if url == "" {
+				continue
+			}
+
+			fixedUrl := u.RepairPath(domain, url)
+			if _, ok := urlPaths[fixedUrl]; !ok {
+				u.PrintColor(u.WHITE, fixedUrl+"\n")
+				urlPaths[fixedUrl] = true
+				queuePaths = append(queuePaths, fixedUrl)
+			}
+		}
+
+		if len(urlPaths) >= LIMIT_URL_REQS {
+			keepContinuing = u.PromptConfirm(LIMIT_URL_REQS)
+		}
 	}
 
 }

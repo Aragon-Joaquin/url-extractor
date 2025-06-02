@@ -3,6 +3,7 @@ package utils
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	p "github.com/manifoldco/promptui"
@@ -49,4 +50,21 @@ func PromptInput() (string, error) {
 	PrintColor(YELLOW, fmt.Sprintf("You choose %q\n", res))
 
 	return res, nil
+}
+
+func PromptConfirm(MaxCount int) bool {
+	prompt := &p.Prompt{
+		Label:     "Reached " + strconv.Itoa(MaxCount) + " requests. Wanna keep searching? (making too much requests would probably getting you timed-out or ip banned)",
+		AllowEdit: false,
+		IsConfirm: true,
+	}
+	res, err := prompt.Run()
+
+	// if its anything except 'y' or 'Y' it just throws an error
+	if err != nil {
+		return false
+	}
+
+	// its not necessary but whatever
+	return res == "Y" || res == "y"
 }
