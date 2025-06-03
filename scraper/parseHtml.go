@@ -1,10 +1,12 @@
 package scraper
 
 import (
+	u "url-extractor/utils"
+
 	"golang.org/x/net/html"
 )
 
-func ParseHtml(z *html.Tokenizer, urlChan chan<- string) {
+func ParseHtml(z *html.Tokenizer, urlChan chan<- string, domain string) {
 	//! parse to html and find anchor
 
 	for {
@@ -19,7 +21,8 @@ func ParseHtml(z *html.Tokenizer, urlChan chan<- string) {
 			element := z.Token()
 
 			if element.Data == ANCHOR_TAG {
-				urlChan <- getAttrHref(&element)
+				anchor := getAttrHref(&element)
+				urlChan <- u.RepairPath(domain, anchor)
 				continue
 			}
 		}

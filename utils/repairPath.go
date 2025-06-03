@@ -4,14 +4,8 @@ import (
 	"strings"
 )
 
-func RepairPath(url string, result string) string {
+func RepairPath(currentUrl string, result string) string {
 	builder := result
-
-	//! eliminate queries if exist
-	queryRemover := strings.Index(builder, "?")
-	if queryRemover >= 0 {
-		builder = builder[:queryRemover]
-	}
 
 	//! add domain if doesn't exists
 	for idx, val := range URLProtocols {
@@ -21,13 +15,25 @@ func RepairPath(url string, result string) string {
 		}
 
 		if idx == len(URLProtocols)-1 {
-			builder = url + builder
+			builder = currentUrl + builder
 		}
 	}
 
 	//! delete www.
 	if strings.Contains(builder, WWWPrefix) {
 		builder = strings.Replace(builder, WWWPrefix, "", 1)
+	}
+
+	//! eliminate queries if exist
+	queryRemover := strings.Index(builder, "?")
+	if queryRemover >= 0 {
+		builder = builder[:queryRemover]
+	}
+
+	//! eliminate self referencing
+	secondRemover := strings.Index(builder, "#")
+	if secondRemover >= 0 {
+		builder = builder[:secondRemover]
 	}
 
 	return builder

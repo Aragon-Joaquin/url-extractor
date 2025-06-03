@@ -53,9 +53,16 @@ func PromptInput() (string, error) {
 	return res, nil
 }
 
-func PromptConfirm(MaxCount int) bool {
+type PromptMessages string
+
+const (
+	MESSAGE_PER_REQUESTS PromptMessages = "Wanna keep searching? (making too much requests would probably getting you timed-out or ip banned)"
+	CONFIRM_BULK_REQUEST PromptMessages = "Wanna bulk request using url's already searched? (will only fetch the same domain provided)"
+)
+
+func PromptConfirm(MaxCount int, message PromptMessages) bool {
 	prompt := &p.Prompt{
-		Label:     "Reached " + strconv.Itoa(MaxCount) + " requests. Wanna keep searching? (making too much requests would probably getting you timed-out or ip banned)",
+		Label:     "Searched though " + strconv.Itoa(MaxCount) + " URL's. " + string(message),
 		AllowEdit: false,
 		IsConfirm: true,
 	}
