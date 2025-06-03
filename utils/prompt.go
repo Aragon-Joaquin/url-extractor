@@ -11,6 +11,7 @@ import (
 
 var URLProtocols = []string{"http://", "https://"}
 var URLTopDomain = []string{".com", ".org", ".net", ".io", ".dev", ".ai", ".app", ".co", ".info", ".tech", ".gov"}
+var WWWPrefix string = "www."
 
 func validateURL() func(string) error {
 	return func(input string) error {

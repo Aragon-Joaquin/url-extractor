@@ -1,10 +1,12 @@
 package scraper
 
 import (
+	"bytes"
+	"context"
+	"errors"
+	"io"
 	"net/http"
 	"time"
-
-	u "url-extractor/utils"
 
 	"golang.org/x/net/html"
 )
@@ -15,50 +17,35 @@ const (
 	HTTP_TIMEOUT   time.Duration = 5 * time.Second
 )
 
-func FetchUrl(link string, urlChan chan<- string) {
+func FetchUrl(ctx context.Context, link string) (*html.Tokenizer, error) {
 	//! fetch
-	c := &http.Client{
+	client := &http.Client{
 		Timeout: HTTP_TIMEOUT,
 	}
 
-	res, err := c.Get(link)
+	req, err := http.NewRequestWithContext(ctx, "GET", link, nil)
+	if err != nil {
+		return nil, errors.New("Failed to create request: " + err.Error())
+	}
+
+	res, err := client.Do(req)
 
 	if err != nil {
-		u.PrintColor(u.RED, "Request longed too much: "+HTTP_TIMEOUT.String()+"\n")
-		urlChan <- ""
-		return
+		if ctx.Err() != nil {
+			return nil, errors.New(ctx.Err().Error())
+		} else {
+			return nil, errors.New("Request longed too much: " + HTTP_TIMEOUT.String())
+		}
 	}
 
 	defer res.Body.Close()
 
-	//! parse to html and find anchor
-	z := html.NewTokenizer(res.Body)
-
-	for {
-		token := z.Next()
-
-		if token == html.ErrorToken {
-			urlChan <- ""
-			return
-		}
-
-		if token == html.StartTagToken {
-			element := z.Token()
-
-			if element.Data == ANCHOR_TAG {
-				urlChan <- getAttrHref(&element)
-				continue
-			}
-		}
+	// i need to copy the body cuz newTokenizer reads directly from the res.Body
+	// and when i pass it as a pointer, the body is already close cuz the defer
+	bodyBytes, err := io.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
 	}
 
-}
-
-func getAttrHref(t *html.Token) string {
-	for _, val := range t.Attr {
-		if val.Key == HREF_ATTRIBUTE {
-			return val.Val
-		}
-	}
-	return ""
+	return html.NewTokenizer(bytes.NewReader(bodyBytes)), nil
 }

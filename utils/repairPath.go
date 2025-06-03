@@ -25,5 +25,10 @@ func RepairPath(url string, result string) string {
 		}
 	}
 
+	//! delete www.
+	if strings.Contains(builder, WWWPrefix) {
+		builder = strings.Replace(builder, WWWPrefix, "", 1)
+	}
+
 	return builder
 }
